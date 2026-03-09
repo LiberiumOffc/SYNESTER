@@ -17,7 +17,7 @@ colorama.init(autoreset=True)
 # Конфигурация
 CONFIG_FILE = "config.json"
 
-# ASCII лого
+# Твоя вывеска (ASCII лого)
 LOGO = f"""
 {Fore.BLACK}╭━━━┳╮╱╱╭┳━╮╱╭┳━━━┳━━━┳━━━━┳━━━┳━━━╮
 ┃╭━╮┃╰╮╭╯┃┃╰╮┃┃╭━━┫╭━╮┃╭╮╭╮┃╭━━┫╭━╮┃
