@@ -6,19 +6,16 @@ import colorama
 from colorama import Fore, Back, Style
 import telebot
 from telethon import TelegramClient, errors
-from telethon.tl.functions.messages import SendMessageRequest
-from telethon.tl.types import InputPeerChat, InputPeerChannel, InputPeerUser
 import asyncio
 import threading
-from datetime import datetime
+import random
 
-# Инициализация colorama
 colorama.init(autoreset=True)
 
 # Конфигурация
 CONFIG_FILE = "config.json"
 
-# Твоя вывеска (ASCII лого) - разделим на части для гарантированного отображения
+# Твоя вывеска (ASCII лого)
 LOGO_ASCII = """
 ╭━━━┳╮╱╱╭┳━╮╱╭┳━━━┳━━━┳━━━━┳━━━┳━━━╮
 ┃╭━╮┃╰╮╭╯┃┃╰╮┃┃╭━━┫╭━╮┃╭╮╭╮┃╭━━┫╭━╮┃
@@ -28,7 +25,7 @@ LOGO_ASCII = """
 ╰━━━╯╱╰╯╱╰╯╱╰━┻━━━┻━━━╯╱╰╯╱╰━━━┻╯╰━╯
 """
 
-class MassSender:
+class Synaster:
     def __init__(self):
         self.api_id = None
         self.api_hash = None
@@ -38,17 +35,35 @@ class MassSender:
         self.targets = []
         self.load_config()
 
+    def printer_animation(self, text, delay=0.03):
+        """Анимация печатающей машинки"""
+        for char in text:
+            sys.stdout.write(char)
+            sys.stdout.flush()
+            time.sleep(delay)
+        print()
+
+    def loading_animation(self, text, duration=1):
+        """Анимация загрузки"""
+        animation = "|/-\\"
+        for i in range(int(duration * 10)):
+            sys.stdout.write(f"\r{Fore.CYAN}{text} {animation[i % 4]}{Style.RESET_ALL}")
+            sys.stdout.flush()
+            time.sleep(0.1)
+        print()
+
     def clear_screen(self):
         os.system('cls' if os.name == 'nt' else 'clear')
         self.show_logo()
 
     def show_logo(self):
-        """Отдельный метод для гарантированного показа логотипа"""
-        # Черный текст на белом фоне для первой части
-        print(f"{Fore.BLACK}{Back.WHITE}{LOGO_ASCII}{Style.RESET_ALL}")
-        # Добавим разделитель
+        """Показ логотипа с анимацией"""
+        print(f"{Fore.BLACK}{Back.WHITE}", end="")
+        for line in LOGO_ASCII.split('\n'):
+            self.printer_animation(line, 0.01)
+        print(f"{Style.RESET_ALL}")
         print(f"{Fore.WHITE}{'='*50}{Style.RESET_ALL}")
-        print(f"{Fore.CYAN}⚡ Массовый отправитель сообщений v1.0{Style.RESET_ALL}")
+        self.loading_animation("Загрузка SYNASTER", 1)
         print(f"{Fore.WHITE}{'='*50}{Style.RESET_ALL}\n")
 
     def load_config(self):
@@ -76,17 +91,19 @@ class MassSender:
     def show_menu(self):
         """Отображение главного меню"""
         self.clear_screen()
-        print(f"{Fore.BLACK}┌──────────────────────────────────────┐{Style.RESET_ALL}")
-        print(f"{Fore.BLACK}│{Fore.WHITE}           ГЛАВНОЕ МЕНЮ              {Fore.BLACK}│{Style.RESET_ALL}")
-        print(f"{Fore.BLACK}├──────────────────────────────────────┤{Style.RESET_ALL}")
-        print(f"{Fore.BLACK}│{Fore.WHITE} 1. {Fore.GREEN}Настройка API{Fore.WHITE}                       {Fore.BLACK}│{Style.RESET_ALL}")
-        print(f"{Fore.BLACK}│{Fore.WHITE} 2. {Fore.GREEN}Ввести сообщение{Fore.WHITE}                  {Fore.BLACK}│{Style.RESET_ALL}")
-        print(f"{Fore.BLACK}│{Fore.WHITE} 3. {Fore.GREEN}Загрузить цели (чаты/группы){Fore.WHITE}      {Fore.BLACK}│{Style.RESET_ALL}")
-        print(f"{Fore.BLACK}│{Fore.WHITE} 4. {Fore.GREEN}Начать рассылку{Fore.WHITE}                   {Fore.BLACK}│{Style.RESET_ALL}")
-        print(f"{Fore.BLACK}│{Fore.WHITE} 5. {Fore.GREEN}Просмотр статистики{Fore.WHITE}               {Fore.BLACK}│{Style.RESET_ALL}")
-        print(f"{Fore.BLACK}│{Fore.WHITE} 0. {Fore.RED}Выход{Fore.WHITE}                            {Fore.BLACK}│{Style.RESET_ALL}")
-        print(f"{Fore.BLACK}└──────────────────────────────────────┘{Style.RESET_ALL}")
-        
+        menu_text = f"""
+{Fore.BLACK}┌──────────────────────────────────────┐
+│{Fore.WHITE}           ГЛАВНОЕ МЕНЮ              {Fore.BLACK}│
+├──────────────────────────────────────┤
+│{Fore.WHITE} 1. {Fore.GREEN}Настройка API{Fore.WHITE}                       {Fore.BLACK}│
+│{Fore.WHITE} 2. {Fore.GREEN}Ввести сообщение{Fore.WHITE}                  {Fore.BLACK}│
+│{Fore.WHITE} 3. {Fore.GREEN}Загрузить цели (чаты/группы){Fore.WHITE}      {Fore.BLACK}│
+│{Fore.WHITE} 4. {Fore.GREEN}Начать рассылку{Fore.WHITE}                   {Fore.BLACK}│
+│{Fore.WHITE} 5. {Fore.GREEN}Просмотр статистики{Fore.WHITE}               {Fore.BLACK}│
+│{Fore.WHITE} 0. {Fore.RED}Выход{Fore.WHITE}                            {Fore.BLACK}│
+└──────────────────────────────────────┘{Style.RESET_ALL}
+"""
+        self.printer_animation(menu_text, 0.001)
         choice = input(f"\n{Fore.CYAN}➜ Выберите пункт: {Style.RESET_ALL}")
         return choice
 
@@ -97,7 +114,7 @@ class MassSender:
         print(f"{Fore.BLACK}│{Fore.WHITE}          НАСТРОЙКА API              {Fore.BLACK}│{Style.RESET_ALL}")
         print(f"{Fore.BLACK}└──────────────────────────────────────┘{Style.RESET_ALL}\n")
         
-        print(f"{Fore.WHITE}Для работы нужны API данные из my.telegram.org{Style.RESET_ALL}")
+        self.printer_animation(f"{Fore.WHITE}Для работы нужны API данные из my.telegram.org{Style.RESET_ALL}", 0.02)
         print()
         
         self.api_id = input(f"{Fore.GREEN}→ API ID: {Style.RESET_ALL}")
@@ -105,7 +122,7 @@ class MassSender:
         self.phone = input(f"{Fore.GREEN}→ Номер телефона (+7...): {Style.RESET_ALL}")
         
         self.save_config()
-        print(f"\n{Fore.GREEN}✅ Данные сохранены!{Style.RESET_ALL}")
+        self.printer_animation(f"\n{Fore.GREEN}✅ Данные сохранены!{Style.RESET_ALL}", 0.02)
         time.sleep(2)
 
     def input_message(self):
@@ -115,7 +132,8 @@ class MassSender:
         print(f"{Fore.BLACK}│{Fore.WHITE}          ВВЕДИТЕ СООБЩЕНИЕ           {Fore.BLACK}│{Style.RESET_ALL}")
         print(f"{Fore.BLACK}└──────────────────────────────────────┘{Style.RESET_ALL}\n")
         
-        print(f"{Fore.WHITE}(Для завершения ввода введите END в новой строке){Style.RESET_ALL}\n")
+        self.printer_animation(f"{Fore.WHITE}(Для завершения ввода введите END в новой строке){Style.RESET_ALL}", 0.02)
+        print()
         
         lines = []
         while True:
@@ -142,13 +160,8 @@ class MassSender:
         print(f"{Fore.BLACK}│{Fore.WHITE}          ЗАГРУЗКА ЦЕЛЕЙ             {Fore.BLACK}│{Style.RESET_ALL}")
         print(f"{Fore.BLACK}└──────────────────────────────────────┘{Style.RESET_ALL}\n")
         
-        print(f"{Fore.WHITE}Формат: username или ссылка (каждая с новой строки){Style.RESET_ALL}")
-        print(f"{Fore.WHITE}Пример:{Style.RESET_ALL}")
-        print(f"{Fore.CYAN}@channel_name{Style.RESET_ALL}")
-        print(f"{Fore.CYAN}https://t.me/group_name{Style.RESET_ALL}")
-        print(f"{Fore.CYAN}-1001234567890 (ID чата){Style.RESET_ALL}\n")
-        
-        print(f"{Fore.WHITE}Введите цели (END для завершения):{Style.RESET_ALL}")
+        self.printer_animation(f"{Fore.WHITE}Формат: username или ссылка (каждая с новой строки){Style.RESET_ALL}", 0.02)
+        print()
         
         targets = []
         while True:
@@ -185,13 +198,14 @@ class MassSender:
             print(f"{Fore.RED}❌ Загрузите цели{Style.RESET_ALL}")
             return False
         
-        print(f"\n{Fore.YELLOW}⚡ Подключение к Telegram...{Style.RESET_ALL}")
+        self.loading_animation("Подключение к Telegram", 2)
         
         self.client = TelegramClient('session_' + self.phone, int(self.api_id), self.api_hash)
         await self.client.start(phone=self.phone)
         
         print(f"{Fore.GREEN}✅ Подключено!{Style.RESET_ALL}")
-        print(f"\n{Fore.YELLOW}Начинаю рассылку...{Style.RESET_ALL}\n")
+        self.loading_animation("Начинаю рассылку", 1)
+        print()
         
         stats = {
             'success': 0,
@@ -297,12 +311,12 @@ class MassSender:
                 self.show_stats()
             elif choice == '0':
                 self.clear_screen()
-                print(f"{Fore.RED}Выход...{Style.RESET_ALL}")
+                self.printer_animation(f"{Fore.RED}Выход...{Style.RESET_ALL}", 0.05)
                 sys.exit(0)
             else:
                 print(f"{Fore.RED}Неверный выбор!{Style.RESET_ALL}")
                 time.sleep(1)
 
 if __name__ == "__main__":
-    sender = MassSender()
-    sender.run()
+    app = Synaster()
+    app.run()
