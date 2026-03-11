@@ -15,16 +15,6 @@ colorama.init(autoreset=True)
 # Конфигурация
 CONFIG_FILE = "config.json"
 
-# Новый логотип (SYNASTER в ASCII)
-LOGO_ASCII = """
-░██████╗██╗░░░██╗███╗░░██╗███████╗░██████╗████████╗
-██╔════╝╚██╗░██╔╝████╗░██║██╔════╝██╔════╝╚══██╔══╝
-╚█████╗░░╚████╔╝░██╔██╗██║█████╗░░╚█████╗░░░░██║░░░
-░╚═══██╗░░╚██╔╝░░██║╚████║██╔══╝░░░╚═══██╗░░░██║░░░
-██████╔╝░░░██║░░░██║░╚███║███████╗██████╔╝░░░██║░░░
-╚═════╝░░░░╚═╝░░░╚═╝░░╚══╝╚══════╝╚═════╝░░░░╚═╝░░░
-"""
-
 class Synaster:
     def __init__(self):
         self.api_id = None
@@ -43,6 +33,21 @@ class Synaster:
             time.sleep(delay)
         print()
 
+    def gradient_print(self, text, delay=0.05):
+        """Печатает текст с градиентом от чёрного к белому"""
+        length = len(text)
+        for i, char in enumerate(text):
+            if length > 1:
+                intensity = int(255 * i / (length - 1))
+            else:
+                intensity = 255
+            # Формируем true color (градация серого)
+            color_code = f"\033[38;2;{intensity};{intensity};{intensity}m"
+            sys.stdout.write(color_code + char + "\033[0m")
+            sys.stdout.flush()
+            time.sleep(delay)
+        print()  # переход на новую строку после всего текста
+
     def loading_animation(self, text, duration=1):
         """Анимация загрузки"""
         animation = "|/-\\"
@@ -57,11 +62,8 @@ class Synaster:
         self.show_logo()
 
     def show_logo(self):
-        """Показ логотипа с анимацией"""
-        print(f"{Fore.BLACK}{Back.WHITE}", end="")
-        for line in LOGO_ASCII.split('\n'):
-            self.printer_animation(line, 0.01)
-        print(f"{Style.RESET_ALL}")
+        """Показывает название SYNASTER с черно-белым градиентом"""
+        self.gradient_print("SYNASTER", delay=0.05)
         print(f"{Fore.WHITE}{'='*50}{Style.RESET_ALL}")
         self.loading_animation("Загрузка SYNASTER", 1)
         print(f"{Fore.WHITE}{'='*50}{Style.RESET_ALL}\n")
