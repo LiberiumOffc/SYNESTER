@@ -12,19 +12,20 @@ import asyncio
 import threading
 from datetime import datetime
 
+# Инициализация colorama
 colorama.init(autoreset=True)
 
 # Конфигурация
 CONFIG_FILE = "config.json"
 
-# Твоя вывеска (ASCII лого)
-LOGO = f"""
-{Fore.BLACK}╭━━━┳╮╱╱╭┳━╮╱╭┳━━━┳━━━┳━━━━┳━━━┳━━━╮
+# Твоя вывеска (ASCII лого) - разделим на части для гарантированного отображения
+LOGO_ASCII = """
+╭━━━┳╮╱╱╭┳━╮╱╭┳━━━┳━━━┳━━━━┳━━━┳━━━╮
 ┃╭━╮┃╰╮╭╯┃┃╰╮┃┃╭━━┫╭━╮┃╭╮╭╮┃╭━━┫╭━╮┃
 ┃╰━━╋╮╰╯╭┫╭╮╰╯┃╰━━┫╰━━╋╯┃┃╰┫╰━━┫╰━╯┃
 ╰━━╮┃╰╮╭╯┃┃╰╮┃┃╭━━┻━━╮┃╱┃┃╱┃╭━━┫╭╮╭╯
 ┃╰━╯┃╱┃┃╱┃┃╱┃┃┃╰━━┫╰━╯┃╱┃┃╱┃╰━━┫┃┃╰╮
-╰━━━╯╱╰╯╱╰╯╱╰━┻━━━┻━━━╯╱╰╯╱╰━━━┻╯╰━╯{Style.RESET_ALL}
+╰━━━╯╱╰╯╱╰╯╱╰━┻━━━┻━━━╯╱╰╯╱╰━━━┻╯╰━╯
 """
 
 class MassSender:
@@ -39,9 +40,16 @@ class MassSender:
 
     def clear_screen(self):
         os.system('cls' if os.name == 'nt' else 'clear')
-        print(LOGO)
+        self.show_logo()
+
+    def show_logo(self):
+        """Отдельный метод для гарантированного показа логотипа"""
+        # Черный текст на белом фоне для первой части
+        print(f"{Fore.BLACK}{Back.WHITE}{LOGO_ASCII}{Style.RESET_ALL}")
+        # Добавим разделитель
+        print(f"{Fore.WHITE}{'='*50}{Style.RESET_ALL}")
         print(f"{Fore.CYAN}⚡ Массовый отправитель сообщений v1.0{Style.RESET_ALL}")
-        print(f"{Fore.WHITE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━{Style.RESET_ALL}\n")
+        print(f"{Fore.WHITE}{'='*50}{Style.RESET_ALL}\n")
 
     def load_config(self):
         """Загрузка конфигурации"""
@@ -90,10 +98,11 @@ class MassSender:
         print(f"{Fore.BLACK}└──────────────────────────────────────┘{Style.RESET_ALL}\n")
         
         print(f"{Fore.WHITE}Для работы нужны API данные из my.telegram.org{Style.RESET_ALL}")
+        print()
         
-        self.api_id = input(f"{Fore.GREEN}➜ API ID: {Style.RESET_ALL}")
-        self.api_hash = input(f"{Fore.GREEN}➜ API Hash: {Style.RESET_ALL}")
-        self.phone = input(f"{Fore.GREEN}➜ Номер телефона (+7...): {Style.RESET_ALL}")
+        self.api_id = input(f"{Fore.GREEN}→ API ID: {Style.RESET_ALL}")
+        self.api_hash = input(f"{Fore.GREEN}→ API Hash: {Style.RESET_ALL}")
+        self.phone = input(f"{Fore.GREEN}→ Номер телефона (+7...): {Style.RESET_ALL}")
         
         self.save_config()
         print(f"\n{Fore.GREEN}✅ Данные сохранены!{Style.RESET_ALL}")
@@ -106,17 +115,14 @@ class MassSender:
         print(f"{Fore.BLACK}│{Fore.WHITE}          ВВЕДИТЕ СООБЩЕНИЕ           {Fore.BLACK}│{Style.RESET_ALL}")
         print(f"{Fore.BLACK}└──────────────────────────────────────┘{Style.RESET_ALL}\n")
         
-        print(f"{Fore.WHITE}(Для завершения ввода нажмите Ctrl+D или введите END в новой строке){Style.RESET_ALL}\n")
+        print(f"{Fore.WHITE}(Для завершения ввода введите END в новой строке){Style.RESET_ALL}\n")
         
         lines = []
-        try:
-            while True:
-                line = input()
-                if line == "END":
-                    break
-                lines.append(line)
-        except EOFError:
-            pass
+        while True:
+            line = input()
+            if line == "END":
+                break
+            lines.append(line)
         
         self.message_text = "\n".join(lines)
         
@@ -145,15 +151,12 @@ class MassSender:
         print(f"{Fore.WHITE}Введите цели (END для завершения):{Style.RESET_ALL}")
         
         targets = []
-        try:
-            while True:
-                line = input()
-                if line == "END":
-                    break
-                if line.strip():
-                    targets.append(line.strip())
-        except EOFError:
-            pass
+        while True:
+            line = input()
+            if line == "END":
+                break
+            if line.strip():
+                targets.append(line.strip())
         
         self.targets = targets
         
