@@ -15,6 +15,16 @@ colorama.init(autoreset=True)
 # Конфигурация
 CONFIG_FILE = "config.json"
 
+# ТВОЯ НАДПИСЬ (КОТОРУЮ ТЫ ХОЧЕШЬ)
+HEADER_ASCII = """
+╭━━━┳╮╱╱╭┳━╮╱╭┳━━━┳━━━┳━━━━┳━━━┳━━━╮
+┃╭━╮┃╰╮╭╯┃┃╰╮┃┃╭━━┫╭━╮┃╭╮╭╮┃╭━━┫╭━╮┃
+┃╰━━╋╮╰╯╭┫╭╮╰╯┃╰━━┫╰━━╋╯┃┃╰┫╰━━┫╰━╯┃
+╰━━╮┃╰╮╭╯┃┃╰╮┃┃╭━━┻━━╮┃╱┃┃╱┃╭━━┫╭╮╭╯
+┃╰━╯┃╱┃┃╱┃┃╱┃┃┃╰━━┫╰━╯┃╱┃┃╱┃╰━━┫┃┃╰╮
+╰━━━╯╱╰╯╱╰╯╱╰━┻━━━┻━━━╯╱╰╯╱╰━━━┻╯╰━╯
+"""
+
 class Synaster:
     def __init__(self):
         self.api_id = None
@@ -33,21 +43,6 @@ class Synaster:
             time.sleep(delay)
         print()
 
-    def gradient_print(self, text, delay=0.05):
-        """Печатает текст с градиентом от чёрного к белому"""
-        length = len(text)
-        for i, char in enumerate(text):
-            if length > 1:
-                intensity = int(255 * i / (length - 1))
-            else:
-                intensity = 255
-            # Формируем true color (градация серого)
-            color_code = f"\033[38;2;{intensity};{intensity};{intensity}m"
-            sys.stdout.write(color_code + char + "\033[0m")
-            sys.stdout.flush()
-            time.sleep(delay)
-        print()  # переход на новую строку после всего текста
-
     def loading_animation(self, text, duration=1):
         """Анимация загрузки"""
         animation = "|/-\\"
@@ -59,11 +54,14 @@ class Synaster:
 
     def clear_screen(self):
         os.system('cls' if os.name == 'nt' else 'clear')
-        self.show_logo()
+        self.show_header()
 
-    def show_logo(self):
-        """Показывает название SYNASTER с черно-белым градиентом"""
-        self.gradient_print("SYNASTER", delay=0.05)
+    def show_header(self):
+        """Показывает ТВОЮ надпись в начале"""
+        # Печатаем каждую строку твоей надписи
+        for line in HEADER_ASCII.split('\n'):
+            if line.strip():  # если строка не пустая
+                print(f"{Fore.BLACK}{line}{Style.RESET_ALL}")
         print(f"{Fore.WHITE}{'='*50}{Style.RESET_ALL}")
         self.loading_animation("Загрузка SYNASTER", 1)
         print(f"{Fore.WHITE}{'='*50}{Style.RESET_ALL}\n")
