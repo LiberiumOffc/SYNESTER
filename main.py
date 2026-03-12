@@ -5,10 +5,8 @@ import json
 import colorama
 from colorama import Fore, Back, Style
 from telethon import TelegramClient, errors
-from telethon.tl.functions.messages import GetDialogsRequest
-from telethon.tl.types import InputPeerEmpty
 import asyncio
-import threading
+import platform
 
 colorama.init(autoreset=True)
 
@@ -33,7 +31,8 @@ class Synaster:
         self.phone = None
         self.client = None
         self.message_text = ""
-        self.target_username = ""
+        self.target = ""
+        self.target_type = "лс"  # лс, чат, группа, канал
         self.message_count = 0
         self.sent_count = 0
         self.is_sending = False
@@ -44,11 +43,10 @@ class Synaster:
         os.system('cls' if os.name == 'nt' else 'clear')
         print(Fore.BLACK + MY_TEXT + Style.RESET_ALL)
         print(Fore.WHITE + "="*60 + Style.RESET_ALL)
-        print(Fore.CYAN + "⚡ SYNASTER - Массовая рассылка в Telegram" + Style.RESET_ALL)
+        print(Fore.CYAN + "⚡ SYNASTER - Telegram Spammer" + Style.RESET_ALL)
         print(Fore.WHITE + "="*60 + Style.RESET_ALL + "\n")
 
     def load_config(self):
-        """Загрузка конфигурации"""
         if os.path.exists(CONFIG_FILE):
             try:
                 with open(CONFIG_FILE, 'r') as f:
@@ -60,7 +58,6 @@ class Synaster:
                 pass
 
     def save_config(self):
-        """Сохранение конфигурации"""
         config = {
             'api_id': self.api_id,
             'api_hash': self.api_hash,
@@ -70,7 +67,6 @@ class Synaster:
             json.dump(config, f, indent=4)
 
     def load_stats(self):
-        """Загрузка статистики"""
         if os.path.exists(STATS_FILE):
             try:
                 with open(STATS_FILE, 'r') as f:
@@ -78,65 +74,69 @@ class Synaster:
                     self.sent_count = stats.get('total_sent', 0)
             except:
                 self.sent_count = 0
-        else:
-            self.sent_count = 0
 
     def save_stats(self):
-        """Сохранение статистики"""
-        stats = {
-            'total_sent': self.sent_count
-        }
+        stats = {'total_sent': self.sent_count}
         with open(STATS_FILE, 'w') as f:
             json.dump(stats, f, indent=4)
 
     def show_menu(self):
-        """Отображение главного меню"""
         self.clear_screen()
-        print(Fore.YELLOW + "📊 СТАТИСТИКА:" + Style.RESET_ALL)
-        print(Fore.WHITE + f"   Всего отправлено сообщений: {Fore.GREEN}{self.sent_count}{Style.RESET_ALL}")
+        
+        # Инфо о платформе
+        device = platform.system()
+        print(Fore.YELLOW + f"💻 Устройство: {Fore.WHITE}{device}" + Style.RESET_ALL)
+        
+        # Статистика
+        print(Fore.YELLOW + "\n📊 СТАТИСТИКА:" + Style.RESET_ALL)
+        print(Fore.WHITE + f"   Всего отправлено: {Fore.GREEN}{self.sent_count}{Style.RESET_ALL}")
+        if self.is_sending:
+            print(Fore.RED + "   СТАТУС: РАССЫЛКА АКТИВНА" + Style.RESET_ALL)
         print()
+        
+        # Меню
         print(Fore.YELLOW + "📋 МЕНЮ:" + Style.RESET_ALL)
         print(Fore.WHITE + "   1. " + Fore.GREEN + "Настройка API" + Style.RESET_ALL)
         print(Fore.WHITE + "   2. " + Fore.GREEN + "Ввести сообщение" + Style.RESET_ALL)
-        print(Fore.WHITE + "   3. " + Fore.GREEN + "Указать @username получателя" + Style.RESET_ALL)
+        print(Fore.WHITE + "   3. " + Fore.GREEN + "Выбрать цель для спама" + Style.RESET_ALL)
         print(Fore.WHITE + "   4. " + Fore.GREEN + "Указать количество сообщений" + Style.RESET_ALL)
-        print(Fore.WHITE + "   5. " + Fore.GREEN + "Запустить рассылку" + Style.RESET_ALL)
-        print(Fore.WHITE + "   6. " + Fore.RED + "СТОП (остановить рассылку)" + Style.RESET_ALL)
+        print(Fore.WHITE + "   5. " + Fore.RED + "ЗАПУСТИТЬ СПАМ" + Style.RESET_ALL)
+        print(Fore.WHITE + "   6. " + Fore.RED + "СТОП (остановить спам)" + Style.RESET_ALL)
         print(Fore.WHITE + "   0. " + Fore.RED + "Выход" + Style.RESET_ALL)
         print()
         
-        # Показываем текущие настройки
+        # Текущие настройки
         print(Fore.YELLOW + "⚙️ ТЕКУЩИЕ НАСТРОЙКИ:" + Style.RESET_ALL)
-        print(Fore.WHITE + f"   Получатель: {Fore.CYAN}{self.target_username if self.target_username else 'не указан'}{Style.RESET_ALL}")
-        print(Fore.WHITE + f"   Количество: {Fore.CYAN}{self.message_count if self.message_count > 0 else 'не указано'}{Style.RESET_ALL}")
-        print(Fore.WHITE + f"   Сообщение: {Fore.CYAN}{self.message_text[:30] + '...' if len(self.message_text) > 30 else self.message_text}{Style.RESET_ALL}")
+        print(Fore.WHITE + f"   Тип цели: {Fore.CYAN}{self.target_type}{Style.RESET_ALL}")
+        print(Fore.WHITE + f"   Цель: {Fore.CYAN}{self.target if self.target else 'не указана'}{Style.RESET_ALL}")
+        print(Fore.WHITE + f"   Кол-во: {Fore.CYAN}{self.message_count if self.message_count > 0 else 'не указано'}{Style.RESET_ALL}")
+        print(Fore.WHITE + f"   Текст: {Fore.CYAN}{self.message_text[:30] + '...' if len(self.message_text) > 30 else self.message_text}{Style.RESET_ALL}")
         print()
         
         choice = input(Fore.CYAN + "➜ Выберите пункт: " + Style.RESET_ALL)
         return choice
 
     def setup_api(self):
-        """Настройка API Telegram"""
         self.clear_screen()
         print(Fore.YELLOW + "🔧 НАСТРОЙКА API" + Style.RESET_ALL)
         print(Fore.WHITE + "-"*60 + Style.RESET_ALL)
-        print(Fore.WHITE + "Для работы нужны API данные из my.telegram.org" + Style.RESET_ALL)
+        print(Fore.WHITE + "Нужно для работы на любом устройстве (ПК/телефон)" + Style.RESET_ALL)
+        print(Fore.WHITE + "Бери с https://my.telegram.org" + Style.RESET_ALL)
         print()
         
         self.api_id = input(Fore.GREEN + "→ API ID: " + Style.RESET_ALL)
         self.api_hash = input(Fore.GREEN + "→ API Hash: " + Style.RESET_ALL)
-        self.phone = input(Fore.GREEN + "→ Номер телефона (+7...): " + Style.RESET_ALL)
+        self.phone = input(Fore.GREEN + "→ Твой номер (+7...): " + Style.RESET_ALL)
         
         self.save_config()
-        print(Fore.GREEN + "\n✅ Данные сохранены!" + Style.RESET_ALL)
+        print(Fore.GREEN + "\n✅ Сохранено! Работает на всех устройствах" + Style.RESET_ALL)
         time.sleep(2)
 
     def input_message(self):
-        """Ввод сообщения для рассылки"""
         self.clear_screen()
-        print(Fore.YELLOW + "📝 ВВОД СООБЩЕНИЯ" + Style.RESET_ALL)
+        print(Fore.YELLOW + "📝 ТЕКСТ СООБЩЕНИЯ" + Style.RESET_ALL)
         print(Fore.WHITE + "-"*60 + Style.RESET_ALL)
-        print(Fore.WHITE + "Введите текст сообщения (END - закончить):" + Style.RESET_ALL)
+        print(Fore.WHITE + "Введи текст (END - закончить):" + Style.RESET_ALL)
         print()
         
         lines = []
@@ -149,96 +149,120 @@ class Synaster:
         self.message_text = "\n".join(lines)
         
         if self.message_text:
-            print(Fore.GREEN + f"\n✅ Сообщение сохранено ({len(self.message_text)} символов)" + Style.RESET_ALL)
+            print(Fore.GREEN + f"\n✅ Текст сохранён ({len(self.message_text)} символов)" + Style.RESET_ALL)
         else:
-            print(Fore.RED + "\n❌ Сообщение пустое" + Style.RESET_ALL)
+            print(Fore.RED + "\n❌ Текст пустой" + Style.RESET_ALL)
         
-        input(Fore.WHITE + "\nНажмите Enter для продолжения..." + Style.RESET_ALL)
+        input(Fore.WHITE + "\nНажми Enter..." + Style.RESET_ALL)
 
-    def set_target(self):
-        """Указать @username получателя"""
+    def choose_target(self):
         self.clear_screen()
-        print(Fore.YELLOW + "👤 УКАЗАТЬ ПОЛУЧАТЕЛЯ" + Style.RESET_ALL)
+        print(Fore.YELLOW + "🎯 ВЫБОР ЦЕЛИ" + Style.RESET_ALL)
         print(Fore.WHITE + "-"*60 + Style.RESET_ALL)
-        print(Fore.WHITE + "Введите @username пользователя или чата:" + Style.RESET_ALL)
+        print(Fore.WHITE + "Куда будем спамить?" + Style.RESET_ALL)
+        print()
+        print(Fore.WHITE + "   1. " + Fore.CYAN + "ЛС (личные сообщения)" + Style.RESET_ALL)
+        print(Fore.WHITE + "   2. " + Fore.CYAN + "Чат" + Style.RESET_ALL)
+        print(Fore.WHITE + "   3. " + Fore.CYAN + "Группа" + Style.RESET_ALL)
+        print(Fore.WHITE + "   4. " + Fore.CYAN + "Канал" + Style.RESET_ALL)
         print()
         
-        username = input(Fore.GREEN + "→ @" + Style.RESET_ALL)
-        if username:
-            self.target_username = "@" + username
-            print(Fore.GREEN + f"\n✅ Получатель установлен: {self.target_username}" + Style.RESET_ALL)
-        else:
-            print(Fore.RED + "\n❌ Username не введён" + Style.RESET_ALL)
+        type_choice = input(Fore.GREEN + "→ Выбери тип (1-4): " + Style.RESET_ALL)
         
-        input(Fore.WHITE + "\nНажмите Enter для продолжения..." + Style.RESET_ALL)
+        type_map = {
+            '1': 'лс',
+            '2': 'чат',
+            '3': 'группа',
+            '4': 'канал'
+        }
+        
+        if type_choice in type_map:
+            self.target_type = type_map[type_choice]
+            print(Fore.GREEN + f"\n✅ Тип выбран: {self.target_type}" + Style.RESET_ALL)
+        else:
+            print(Fore.RED + "\n❌ Неверный выбор" + Style.RESET_ALL)
+            input(Fore.WHITE + "\nEnter..." + Style.RESET_ALL)
+            return
+        
+        print()
+        print(Fore.WHITE + "Теперь введи @username или ссылку:" + Style.RESET_ALL)
+        print(Fore.WHITE + "   Пример: @durov" + Style.RESET_ALL)
+        print(Fore.WHITE + "   Пример: https://t.me/durov" + Style.RESET_ALL)
+        print()
+        
+        self.target = input(Fore.GREEN + "→ Цель: " + Style.RESET_ALL)
+        
+        if self.target:
+            print(Fore.GREEN + f"\n✅ Цель сохранена: {self.target}" + Style.RESET_ALL)
+        else:
+            print(Fore.RED + "\n❌ Цель не указана" + Style.RESET_ALL)
+        
+        input(Fore.WHITE + "\nEnter..." + Style.RESET_ALL)
 
     def set_message_count(self):
-        """Указать количество сообщений"""
         self.clear_screen()
-        print(Fore.YELLOW + "🔢 КОЛИЧЕСТВО СООБЩЕНИЙ" + Style.RESET_ALL)
+        print(Fore.YELLOW + "🔢 КОЛИЧЕСТВО" + Style.RESET_ALL)
         print(Fore.WHITE + "-"*60 + Style.RESET_ALL)
-        print(Fore.WHITE + "Сколько сообщений отправить?" + Style.RESET_ALL)
+        print(Fore.WHITE + "Сколько раз отправить?" + Style.RESET_ALL)
         print()
         
         try:
             count = int(input(Fore.GREEN + "→ Количество: " + Style.RESET_ALL))
             if count > 0:
                 self.message_count = count
-                print(Fore.GREEN + f"\n✅ Установлено: {count} сообщений" + Style.RESET_ALL)
+                print(Fore.GREEN + f"\n✅ Будет отправлено: {count}" + Style.RESET_ALL)
             else:
-                print(Fore.RED + "\n❌ Количество должно быть больше 0" + Style.RESET_ALL)
-        except ValueError:
-            print(Fore.RED + "\n❌ Введите число" + Style.RESET_ALL)
+                print(Fore.RED + "\n❌ Должно быть больше 0" + Style.RESET_ALL)
+        except:
+            print(Fore.RED + "\n❌ Это должно быть число" + Style.RESET_ALL)
         
-        input(Fore.WHITE + "\nНажмите Enter для продолжения..." + Style.RESET_ALL)
+        input(Fore.WHITE + "\nEnter..." + Style.RESET_ALL)
 
     def stop_sending(self):
-        """Остановка рассылки"""
         if self.is_sending:
             self.is_sending = False
-            print(Fore.RED + "\n⛔ Останавливаю рассылку..." + Style.RESET_ALL)
+            print(Fore.RED + "\n⛔ ОСТАНАВЛИВАЮ СПАМ!" + Style.RESET_ALL)
             time.sleep(1)
         else:
-            print(Fore.YELLOW + "\n⚠️ Рассылка не запущена" + Style.RESET_ALL)
+            print(Fore.YELLOW + "\n⚠️ Спам не запущен" + Style.RESET_ALL)
             time.sleep(1)
 
     async def send_messages(self):
-        """Асинхронная отправка сообщений"""
         if not all([self.api_id, self.api_hash, self.phone]):
-            print(Fore.RED + "❌ Сначала настройте API" + Style.RESET_ALL)
+            print(Fore.RED + "❌ Сначала настрой API" + Style.RESET_ALL)
             return False
         
         if not self.message_text:
-            print(Fore.RED + "❌ Введите сообщение" + Style.RESET_ALL)
+            print(Fore.RED + "❌ Введи текст" + Style.RESET_ALL)
             return False
         
-        if not self.target_username:
-            print(Fore.RED + "❌ Укажите @username получателя" + Style.RESET_ALL)
+        if not self.target:
+            print(Fore.RED + "❌ Выбери цель" + Style.RESET_ALL)
             return False
         
         if self.message_count <= 0:
-            print(Fore.RED + "❌ Укажите количество сообщений" + Style.RESET_ALL)
+            print(Fore.RED + "❌ Укажи количество" + Style.RESET_ALL)
             return False
         
-        print(Fore.YELLOW + "\n⚡ Подключение к Telegram..." + Style.RESET_ALL)
+        print(Fore.YELLOW + "\n⚡ Подключаюсь к Telegram..." + Style.RESET_ALL)
         
         self.client = TelegramClient('session_' + self.phone, int(self.api_id), self.api_hash)
         await self.client.start(phone=self.phone)
         
         print(Fore.GREEN + "✅ Подключено!" + Style.RESET_ALL)
-        print(Fore.YELLOW + "\n📨 Начинаю рассылку..." + Style.RESET_ALL)
+        print(Fore.RED + f"\n🔥 НАЧИНАЮ СПАМ В {self.target_type.upper()} 🔥" + Style.RESET_ALL)
         print(Fore.WHITE + "-"*60 + Style.RESET_ALL)
         
         try:
-            # Получаем сущность получателя
-            entity = await self.client.get_entity(self.target_username)
+            # Получаем цель
+            entity = await self.client.get_entity(self.target)
             
             self.is_sending = True
             sent_in_session = 0
             
             for i in range(self.message_count):
                 if not self.is_sending:
-                    print(Fore.RED + "\n⛔ Рассылка остановлена пользователем" + Style.RESET_ALL)
+                    print(Fore.RED + "\n⛔ СПАМ ОСТАНОВЛЕН" + Style.RESET_ALL)
                     break
                 
                 try:
@@ -247,14 +271,14 @@ class Synaster:
                     self.sent_count += 1
                     self.save_stats()
                     
-                    print(Fore.GREEN + f"✅ [{i+1}/{self.message_count}] Отправлено: {self.target_username}" + Style.RESET_ALL)
+                    print(Fore.GREEN + f"✅ [{i+1}/{self.message_count}] Отправлено в {self.target_type}: {self.target}" + Style.RESET_ALL)
                     
-                    # Задержка между сообщениями
-                    await asyncio.sleep(1)
+                    # Задержка
+                    await asyncio.sleep(1.5)
                     
                 except errors.FloodWaitError as e:
                     wait = e.seconds
-                    print(Fore.RED + f"⚠️ Flood wait: {wait} секунд" + Style.RESET_ALL)
+                    print(Fore.RED + f"⚠️ Флуд контроль: ждём {wait} сек" + Style.RESET_ALL)
                     await asyncio.sleep(wait)
                     
                 except Exception as e:
@@ -262,9 +286,9 @@ class Synaster:
                     await asyncio.sleep(2)
             
             print(Fore.WHITE + "-"*60 + Style.RESET_ALL)
-            print(Fore.GREEN + f"✅ Рассылка завершена!" + Style.RESET_ALL)
-            print(Fore.WHITE + f"   Отправлено в этой сессии: {Fore.CYAN}{sent_in_session}{Style.RESET_ALL}")
-            print(Fore.WHITE + f"   Всего отправлено (за всё время): {Fore.CYAN}{self.sent_count}{Style.RESET_ALL}")
+            print(Fore.GREEN + f"✅ СПАМ ЗАВЕРШЁН!" + Style.RESET_ALL)
+            print(Fore.WHITE + f"   Отправлено сейчас: {Fore.CYAN}{sent_in_session}{Style.RESET_ALL}")
+            print(Fore.WHITE + f"   Всего отправлено: {Fore.CYAN}{self.sent_count}{Style.RESET_ALL}")
             
         except Exception as e:
             print(Fore.RED + f"❌ Ошибка: {e}" + Style.RESET_ALL)
@@ -272,30 +296,32 @@ class Synaster:
         await self.client.disconnect()
         self.is_sending = False
         
-        input(Fore.WHITE + "\nНажмите Enter для продолжения..." + Style.RESET_ALL)
+        input(Fore.WHITE + "\nEnter..." + Style.RESET_ALL)
         return True
 
     def start_sending(self):
-        """Запуск рассылки"""
         if self.is_sending:
-            print(Fore.RED + "❌ Рассылка уже запущена" + Style.RESET_ALL)
+            print(Fore.RED + "❌ Спам уже идёт" + Style.RESET_ALL)
             time.sleep(1)
             return
         
         self.clear_screen()
-        print(Fore.YELLOW + "🚀 ЗАПУСК РАССЫЛКИ" + Style.RESET_ALL)
+        print(Fore.YELLOW + "🔥 ЗАПУСК СПАМА" + Style.RESET_ALL)
         print(Fore.WHITE + "-"*60 + Style.RESET_ALL)
-        print(Fore.WHITE + f"Получатель: {Fore.CYAN}{self.target_username}{Style.RESET_ALL}")
+        print(Fore.WHITE + f"Тип цели: {Fore.CYAN}{self.target_type}{Style.RESET_ALL}")
+        print(Fore.WHITE + f"Цель: {Fore.CYAN}{self.target}{Style.RESET_ALL}")
         print(Fore.WHITE + f"Количество: {Fore.CYAN}{self.message_count}{Style.RESET_ALL}")
-        print(Fore.WHITE + f"Сообщение: {Fore.CYAN}{self.message_text[:50]}...{Style.RESET_ALL}")
+        print(Fore.WHITE + f"Текст: {Fore.CYAN}{self.message_text[:50]}...{Style.RESET_ALL}")
+        print()
+        print(Fore.RED + "⚠️  ВНИМАНИЕ: Telegram может заблокировать аккаунт!" + Style.RESET_ALL)
+        print(Fore.RED + "⚠️  Работает на ПК и телефоне (везде где есть Python)" + Style.RESET_ALL)
         print()
         
-        confirm = input(Fore.YELLOW + "Начать рассылку? (y/n): " + Style.RESET_ALL)
+        confirm = input(Fore.YELLOW + "Всё равно запустить? (y/n): " + Style.RESET_ALL)
         if confirm.lower() == 'y':
             asyncio.run(self.send_messages())
 
     def run(self):
-        """Основной цикл программы"""
         while True:
             choice = self.show_menu()
             
@@ -304,7 +330,7 @@ class Synaster:
             elif choice == '2':
                 self.input_message()
             elif choice == '3':
-                self.set_target()
+                self.choose_target()
             elif choice == '4':
                 self.set_message_count()
             elif choice == '5':
